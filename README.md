@@ -16,7 +16,7 @@ This project is a JavaFX application designed for educational purposes. It allow
 To set up the Info445 Project on your local machine, follow these steps:
 
 1. Clone the repository:
-git clone https://github.com/yourusername/info445-project.git
+git clone https:github.com/HassanTofayli/info445-project.git
 cd info445-project
 
 2. Open the project in IntelliJ IDEA or your preferred IDE.
