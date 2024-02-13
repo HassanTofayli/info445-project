@@ -7,6 +7,7 @@ public class Student {
     public String Name;
     public String Password;
     private List<Integer> coursesCodes;
+
     public List<Teacher> privateTeachers;
 
     public Student(String name, String password, List<Integer> courses) {
