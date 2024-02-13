@@ -1,4 +1,5 @@
 # Info445 Project
+This project is made by request of Lebanese University EDD course as an assignment to be evaluated for finals.
 
 ## Description
 This project is a JavaFX application designed for educational purposes. It allows students to manage their course enrollments and private teacher sessions. It also includes functionality for teachers, listing the courses they can teach.
