@@ -7,16 +7,14 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
+import javafx.scene.input.KeyEvent;
 import javafx.stage.Stage;
 import javafx.scene.control.TextField;
 
 import java.io.IOException;
+import java.sql.*;
 import java.util.Arrays;
 import java.util.Objects;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 
 public class LoginController {
     @FXML
@@ -32,15 +30,14 @@ public class LoginController {
     Scene scene;
     Parent root;
 
-
-
-
     @FXML
     protected void onHelloClick(){
         welcomeText.setText("Clicked: " + ++i + " Times!");
     }
     @FXML
     public void onLoginClick(ActionEvent e) throws IOException {
+        textField_username.addEventHandler(KeyEvent.KEY_TYPED, event -> welcomeText.setText(""));
+        textField_password.addEventHandler(KeyEvent.KEY_TYPED, event -> welcomeText.setText(""));
         String username = textField_username.getText();
         String password = textField_password.getText();
 
@@ -51,26 +48,28 @@ public class LoginController {
         }
         else {welcomeText.setText("Wrong Credentials"); welcomeText.setStyle("-fx-background-color: red; -fx-background-radius: 5; -fx-padding: 10;");}
 
+
     }
 
     private boolean checkCredentials(String username, String password) {
-//        String sql = "SELECT * FROM Students WHERE Name = '"+ username +"' AND Password = '"+ password + "'";
-//
-//        try (Connection conn = DBConnection.getConnection();
-//             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-//
-//            pstmt.setString(1, username);
-//            pstmt.setString(2, password); // This should be the hashed password
-//            ResultSet rs = pstmt.executeQuery();
-//
-//            return rs.next(); // If there's a result, the credentials are correct
-//        } catch (SQLException ex) {
-//            ex.printStackTrace();
-//            return false;
-//        }
-        return true;
-    }
+        String query = "SELECT * FROM Students WHERE Name = '"+ username +"' AND Password = '"+ password + "'";
 
+
+        String sql = "SELECT * FROM Students WHERE Name = ? AND Password = ?";
+
+        try (
+             PreparedStatement pstmt = Main.conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, username);
+            pstmt.setString(2, password); // This should be the hashed password
+            ResultSet rs = pstmt.executeQuery();
+
+            return rs.next(); // If there's a result, the credentials are correct
+        } catch (SQLException ex) {
+            System.out.println("The user does not exist"+ex.getMessage());
+            return false;
+        }
+    }
 
     private void loginStudent(ActionEvent e) throws IOException {
 

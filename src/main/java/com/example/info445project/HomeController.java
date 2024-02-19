@@ -24,10 +24,8 @@ import javafx.stage.Stage;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Stream;
+import java.sql.*;
+import java.util.*;
 
 
 public class HomeController {
@@ -52,11 +50,20 @@ public class HomeController {
 
     public void loadStudentHome(String name) throws FileNotFoundException {
         welcome_text.setText("Welcome " + name);
-        Stream<Student> stream_student = Arrays.stream(App_Database.students).filter(student -> Objects.equals(student.Name, name));
-        student = stream_student.findFirst().get();
-        Main.currentUser = student;
-        showStudentCourses();
-        showPrivateTeachers();
+        try {
+            student = Student.getStudentByName(name);
+            if (student != null) {
+                Main.currentUser = student;
+                student = (Student) Main.currentUser;
+                showStudentCourses();
+                showPrivateTeachers();
+            } else {
+                System.out.println("No student found with the name: " + name);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
     }
 
 
@@ -78,61 +85,111 @@ public class HomeController {
         stage.show();
     }
 
-    public void showPrivateTeachers() throws FileNotFoundException {
-        if (!student.privateTeachers.isEmpty()) {
-            System.out.println(student.privateTeachers.toString());
-            Teacher[] pt = student.privateTeachers.toArray(new Teacher[0]);
-            for (Teacher teacher : student.privateTeachers) System.out.println(teacher.Name);
-            viewTeachers(pt, private_teachers_tilepane);
+    public void showPrivateTeachers() {
+        // Assuming 'StudentTeachers' is the junction table between students and teachers
+        String sql = "SELECT t.* FROM Teachers t " +
+                "JOIN StudentTeachers st ON t.TeacherID = st.TeacherID " +
+                "WHERE st.StudentID = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, student.id);
+            ResultSet rs = pstmt.executeQuery();
+
+            List<Teacher> privateTeachers = new ArrayList<>();
+            while (rs.next()) {
+                privateTeachers.add(new Teacher(rs));
+            }
+
+            if (!privateTeachers.isEmpty()) {
+                for (Teacher teacher : privateTeachers) {
+                    System.out.println(teacher.Name);
+                }
+                viewTeachers(privateTeachers, private_teachers_tilepane);
+            }
+
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    public void showStudentCourses() throws FileNotFoundException {
-        Course[] studentCourses = Arrays.stream(App_Database.courses)
-                .filter(course -> student.getCoursesCodes().contains(course.Code))
-                .toArray(Course[]::new);
-        for (Course course : studentCourses) System.out.println(course.Name + " - " + course.ImageURL);
-        viewCourses(studentCourses, student_courses_tilepane);
+    public void showStudentCourses() {
+        // Assuming 'StudentCourses' is the junction table between students and courses
+        String sql = "SELECT c.* FROM Courses c " +
+                "JOIN StudentCourses sc ON c.CourseID = sc.CourseID " +
+                "WHERE sc.StudentID = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, student.id);
+            ResultSet rs = pstmt.executeQuery();
+
+            List<Course> studentCourses = new ArrayList<>();
+            while (rs.next()) {
+                studentCourses.add(new Course(rs));
+            }
+
+            for (Course course : studentCourses) {
+                System.out.println(course.Name + " - " + course.ImageURL);
+            }
+            viewCourses(studentCourses, student_courses_tilepane);
+
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
+
 
     public void onAddClassClick() {
         System.out.println("clicked");
 
         Stage stage = new Stage();
         VBox root = new VBox(10);
-        root.setStyle("-fx-alignment: center");
+        root.setAlignment(Pos.CENTER); // Correct alignment
 
         Text text = new Text("Enter the Code of your class");
         Font font = new Font("Mono", 10);
         Text text_grayed = new Text("Note for Developer: use 1, 2, 3... for testing");
         text_grayed.setFont(font);
-        TextField code_input = new TextField("Enter Code");
-        code_input.setMaxWidth(50);
-        code_input.setAlignment(Pos.BASELINE_CENTER);
+        TextField code_input = new TextField();
+        code_input.setPromptText("Enter Code"); // Use prompt text instead of setting text
+        code_input.setMaxWidth(200); // Adjusted width for better UX
         Button addClassBtn = new Button("Add Class");
         Text err = new Text();
 
         addClassBtn.setOnAction(e -> {
-            try {
-                int i = Integer.parseInt(code_input.getText());
+            err.setText(""); // Clear previous error message
 
-                if (Arrays.stream(App_Database.courses).anyMatch(course -> course.Code == i)) {
-                    if (student.getCoursesCodes().contains(i)) {
-                        System.out.println("This course is already registered");
-                        stage.close();
+            try {
+                int code = Integer.parseInt(code_input.getText());
+                // Replace the following with a database check
+                boolean courseExists = Course.checkCourseExistsInDatabase(Main.conn, code); // Implement this method
+                boolean isAlreadyRegistered = student.checkIfStudentRegisteredForCourse(Main.conn, ((Student) Main.currentUser).id, code); // Implement this method
+
+                if (courseExists) {
+                    if (isAlreadyRegistered) {
+                        err.setText("This course is already registered");
                     } else {
-                        Optional<Course> optional_course = Arrays.stream(App_Database.courses).filter(course -> course.Code == i).findFirst();
-                        Course myCourse = optional_course.get();
-                        System.out.println("FOUNDDDDDDDD : " + myCourse.Name + " - code: " + myCourse.Code);
-                        student.addCourseCode(i);
+                        Course myCourse = Course.fetchCourseFromDatabase(Main.conn, code); // Implement fetching the course from the database
+                        System.out.println("FOUND: " + myCourse.Name + " - code: " + myCourse.Code);
+                        student.addCourseCode(Main.conn, code); // Implement adding course to student in the database
+                        // Update UI accordingly
                         student_courses_tilepane.getChildren().add(createCourseCard(myCourse));
-//                    showStudentCourses();
                         stage.close();
                     }
-                } else err.setText("Not Found, Try another code!");
+                } else {
+                    err.setText("Not Found, Try another code!");
+                }
             } catch (NumberFormatException ex) {
-                err.setText("Please enter a number, strings are not allowed");
+                err.setText("Please enter a valid number, strings are not allowed.");
             } catch (Exception ex) {
+                err.setText("An error occurred.");
                 ex.printStackTrace();
             }
         });
@@ -149,11 +206,13 @@ public class HomeController {
 
     @FXML
     public void onShowAllTeachersButton(ActionEvent e) throws IOException {
+        List<Teacher> teachers = Teacher.fetchAllTeachers();
+
         FXMLLoader loader = new FXMLLoader(getClass().getResource("all-teachers.fxml"));
         Parent root = loader.load();
-
         HomeController homeController = loader.getController();
-        viewTeachers(App_Database.teachers, homeController.courses_pane);
+
+        viewTeachers(teachers, homeController.courses_pane);
 
         Main.stageTitle.set("All Teachers");
         ScrollPane scrollPane = new ScrollPane(courses_pane);
@@ -168,7 +227,7 @@ public class HomeController {
         System.out.println(Main.currentUser);
     }
 
-    public void viewTeachers(Teacher[] teahcers, TilePane tilePane) throws FileNotFoundException {
+    public void viewTeachers(List<Teacher> teahcers, TilePane tilePane) throws FileNotFoundException {
         for (Teacher teacher : teahcers)
             tilePane.getChildren().add(createTeacherCard(teacher));
         System.out.println(Main.currentUser);
@@ -196,14 +255,14 @@ public class HomeController {
         card.setOnMouseClicked(e -> {
             try {
                 showTeacherDetails(teacher);
-            } catch (FileNotFoundException ex) {
+            } catch (FileNotFoundException | SQLException ex) {
                 ex.printStackTrace();
             }
         });
         return card;
     }
 
-    public void showTeacherDetails(Teacher teacher) throws FileNotFoundException {
+    public void showTeacherDetails(Teacher teacher) throws FileNotFoundException, SQLException {
         System.out.println(teacher.Name);
         System.out.println("Main User" + Main.currentUser);
         System.out.println("Main User" + ((Student) Main.currentUser).Name);
@@ -234,7 +293,7 @@ public class HomeController {
 
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == addButton) {
-            student.addPrivateTeacher(teacher);
+            student.addPrivateTeacher(Main.conn, teacher);
             alert.close();
         } else {
 
@@ -245,11 +304,13 @@ public class HomeController {
 
     @FXML
     public void onShowAllCoursesButton(ActionEvent e) throws IOException {
+        List<Course> courses = Course.fetchAllCourses();
+
         FXMLLoader loader = new FXMLLoader(getClass().getResource("all-courses-view.fxml"));
         Parent root = loader.load();
-
         HomeController homeController = loader.getController();
-        homeController.viewCourses(App_Database.courses, homeController.courses_pane);
+
+        homeController.viewCourses(courses, homeController.courses_pane);
 
         Main.stageTitle.set("All Courses");
         ScrollPane scrollPane = new ScrollPane(courses_pane);
@@ -263,7 +324,7 @@ public class HomeController {
         all_courses_stage.show();
     }
 
-    public void viewCourses(Course[] courses, TilePane tilePane) throws FileNotFoundException {
+    public void viewCourses(List<Course> courses, TilePane tilePane) throws FileNotFoundException {
         for (Course course : courses)
             tilePane.getChildren().add(createCourseCard(course));
     }
