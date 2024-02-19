@@ -41,7 +41,6 @@ public class App_Database {
             new Student("Ethan", "EthanRocks", Arrays.asList()),
             new Student("Isabella", "Bella123", Arrays.asList(2, 4, 6, 8)),
             new Student("Lucas", "Lucas2023", Arrays.asList(9, 12, 15)),
-            new Student("Mia", "MiaMia", Arrays.asList(1, 11)),
             new Student("Mason", "MasonJar", Arrays.asList()),
             new Student("Charlotte", "Charl2023", Arrays.asList(3, 16, 19)),
             new Student("Logan", "LoganLog", Arrays.asList(5, 7)),

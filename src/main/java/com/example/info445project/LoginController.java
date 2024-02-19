@@ -13,6 +13,10 @@ import javafx.scene.control.TextField;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public class LoginController {
     @FXML
@@ -41,13 +45,32 @@ public class LoginController {
         String password = textField_password.getText();
 
         if (username.equals(admin_username) && password.equals(admin_password)) loginAdmin();
-        else if (Arrays.stream(App_Database.students).anyMatch(student -> Objects.equals(student.Name, username) && Objects.equals(student.Password, password))) {
+        else if (checkCredentials(username, password)) {// Arrays.stream(App_Database.students).anyMatch(student -> Objects.equals(student.Name, username) && Objects.equals(student.Password, password))
 
             loginStudent(e);
         }
         else {welcomeText.setText("Wrong Credentials"); welcomeText.setStyle("-fx-background-color: red; -fx-background-radius: 5; -fx-padding: 10;");}
 
     }
+
+    private boolean checkCredentials(String username, String password) {
+//        String sql = "SELECT * FROM Students WHERE Name = '"+ username +"' AND Password = '"+ password + "'";
+//
+//        try (Connection conn = DBConnection.getConnection();
+//             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+//
+//            pstmt.setString(1, username);
+//            pstmt.setString(2, password); // This should be the hashed password
+//            ResultSet rs = pstmt.executeQuery();
+//
+//            return rs.next(); // If there's a result, the credentials are correct
+//        } catch (SQLException ex) {
+//            ex.printStackTrace();
+//            return false;
+//        }
+        return true;
+    }
+
 
     private void loginStudent(ActionEvent e) throws IOException {
 
