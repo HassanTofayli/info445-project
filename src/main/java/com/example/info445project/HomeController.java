@@ -27,6 +27,9 @@ import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 
+import static com.example.info445project.Main.stageTitle;
+import static com.example.info445project.Main.*;
+
 
 public class HomeController {
 
@@ -43,41 +46,77 @@ public class HomeController {
     private Stage all_courses_stage;
     private Scene all_courses_scene;
     private Student student;
-    Stage stage;
-    Scene scene;
-    Parent root;
+
+
+
     HomeController homeController;
 
     public void loadStudentHome(String name) throws FileNotFoundException {
         welcome_text.setText("Welcome " + name);
-        try {
-            student = Student.getStudentByName(name);
-            if (student != null) {
-                Main.currentUser = student;
-                student = (Student) Main.currentUser;
-                showStudentCourses();
-                showPrivateTeachers();
-            } else {
-                System.out.println("No student found with the name: " + name);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
 
+        if(!Main.guest){
+            try {
+                student = Student.getStudentByName(name);
+                if (student != null) {
+                    stageTitle.set("Student View");
+                    Main.currentUser = student;
+                    student = (Student) Main.currentUser;
+                    showStudentCourses();
+                    showPrivateTeachers();
+                } else {
+                    System.out.println("No student found with the name: " + name);
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        } else stageTitle.set("Guest View");
+
+
+    }
+    public void onBackToLoginClick(ActionEvent e){
+        try {
+            stageTitle.set("Login");
+            Parent root = FXMLLoader.load(getClass().getResource("login-view.fxml"));
+            stage = (Stage)((Node)e.getSource()).getScene().getWindow();
+            stage.setScene(new Scene(root));
+            stage.show();
+            Main.guest = false;
+
+        } catch (Exception ex){
+            System.out.println(ex.getMessage());
+        }
     }
 
 
     @FXML
     public void returnToStudentView(ActionEvent e) throws IOException {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("student-view.fxml"));
-        root = loader.load();
-        homeController = loader.getController();
+        if(Main.guest) {
+            stageTitle.set("Guest View");
+            String username = "Guest";
 
-        student = (Student) Main.currentUser;
+            FXMLLoader loader = new FXMLLoader(Main.class.getResource("guest-view.fxml"));
+            root = loader.load();
 
-        homeController.loadStudentHome(student.Name);
-        Main.stageTitle.set("Welcome " + student.Name);
+            HomeController homeController = loader.getController();
+            homeController.loadStudentHome("guest");
 
+        } else if (Main.currentUser instanceof Teacher) {
+            stageTitle.set("Teacher View");
+            FXMLLoader loader = new FXMLLoader(TeacherController.class.getResource("teacher-view.fxml"));
+            root = loader.load();
+            Teacher teacher = (Teacher) currentUser;
+            TeacherController teacherController = loader.getController();
+            teacherController.loadTeacher(teacher.Name);
+        } else{
+            stageTitle.set("Student View");
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("student-view.fxml"));
+            root = loader.load();
+            homeController = loader.getController();
+
+            student = (Student) Main.currentUser;
+
+            homeController.loadStudentHome(student.Name);
+        }
         stage = (Stage) ((Node) e.getSource()).getScene().getWindow();
         scene = new Scene(root);
         stage.setScene(scene);
@@ -206,6 +245,7 @@ public class HomeController {
 
     @FXML
     public void onShowAllTeachersButton(ActionEvent e) throws IOException {
+        stageTitle.set("All Teachers");
         List<Teacher> teachers = Teacher.fetchAllTeachers();
 
         FXMLLoader loader = new FXMLLoader(getClass().getResource("all-teachers.fxml"));
@@ -214,7 +254,6 @@ public class HomeController {
 
         viewTeachers(teachers, homeController.courses_pane);
 
-        Main.stageTitle.set("All Teachers");
         ScrollPane scrollPane = new ScrollPane(courses_pane);
         scrollPane.setFitToWidth(true);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
@@ -252,13 +291,36 @@ public class HomeController {
         StackPane card = new StackPane(cardContent);
         card.setStyle("-fx-border-color: lightgray; -fx-border-width: 1; -fx-background-color: #FFFFFF;");
         card.setPadding(new Insets(5));
-        card.setOnMouseClicked(e -> {
-            try {
-                showTeacherDetails(teacher);
-            } catch (FileNotFoundException | SQLException ex) {
-                ex.printStackTrace();
-            }
-        });
+
+        String currentViewTitle = stageTitle.get(); // Assuming Main.stageTitle is bound to the stage title
+        if (currentViewTitle.equals("All Teachers")) {
+            card.setOnMouseClicked(e -> {
+                try {
+                    showTeacherDetails(teacher);
+                } catch (FileNotFoundException | SQLException ex) {
+                    ex.printStackTrace();
+                }
+            });
+        } else if (currentViewTitle.equals("Student View")) {
+            // Add a remove button for the student view
+            Button removeButton = new Button("Remove");
+            removeButton.setStyle("-fx-background-color: red;");
+            removeButton.setTooltip(new Tooltip("Remove this private teacher"));
+            removeButton.setOnAction(e -> {
+                try {
+                    System.out.println("Remove: " + teacher.Name);
+                    student.removePrivateTeacher(Main.conn, teacher.id);
+                    private_teachers_tilepane.getChildren().clear(); // Clear the current UI
+                    showPrivateTeachers(); // Reload and display the updated list from the database
+                } catch (SQLException ex) {
+                    throw new RuntimeException(ex);
+                }
+            });
+
+            // Position the button on the card (example: top right)
+            StackPane.setAlignment(removeButton, Pos.TOP_RIGHT);
+            card.getChildren().add(removeButton);
+        }
         return card;
     }
 
@@ -304,6 +366,7 @@ public class HomeController {
 
     @FXML
     public void onShowAllCoursesButton(ActionEvent e) throws IOException {
+        stageTitle.set("All Courses");
         List<Course> courses = Course.fetchAllCourses();
 
         FXMLLoader loader = new FXMLLoader(getClass().getResource("all-courses-view.fxml"));
@@ -312,7 +375,6 @@ public class HomeController {
 
         homeController.viewCourses(courses, homeController.courses_pane);
 
-        Main.stageTitle.set("All Courses");
         ScrollPane scrollPane = new ScrollPane(courses_pane);
         scrollPane.setFitToWidth(true);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
@@ -346,13 +408,36 @@ public class HomeController {
         StackPane card = new StackPane(cardContent);
         card.setStyle("-fx-border-color: lightgray; -fx-border-width: 1; -fx-background-color: #FFFFFF;");
         card.setPadding(new Insets(5));
-        card.setOnMouseClicked(e -> {
-            try {
-                showCourseDetails(course);
-            } catch (FileNotFoundException ex) {
-                ex.printStackTrace();
-            }
-        });
+
+        String currentViewTitle = stageTitle.get(); // Assuming Main.stageTitle is bound to the stage title
+        if (currentViewTitle.equals("All Courses")) {
+            card.setOnMouseClicked(e -> {
+                try {
+                    showCourseDetails(course);
+                } catch (FileNotFoundException ex) {
+                    ex.printStackTrace();
+                }
+            });
+        } else if (currentViewTitle.equals("Student View")) {
+            // Add a remove button for the student view
+            Button removeButton = new Button("X");
+            removeButton.setStyle("-fx-background-color: red; -fx-background-radius: 15");
+            removeButton.setTooltip(new Tooltip("Remove this private teacher"));
+            removeButton.setOnAction(e -> {
+                try {
+                    student.removeCourseCode(Main.conn, course.id);
+                    student_courses_tilepane.getChildren().clear(); // Clear the current UI
+                    showStudentCourses(); // Reload and display the updated list from the database
+                    System.out.println("Course Removed: " + course.Name);
+                } catch (SQLException ex) {
+                    throw new RuntimeException(ex);
+                }
+            });
+
+            // Position the button on the card (example: top right)
+            StackPane.setAlignment(removeButton, Pos.TOP_RIGHT);
+            card.getChildren().add(removeButton);
+        }
         return card;
     }
 
@@ -380,7 +465,19 @@ public class HomeController {
         content.getChildren().addAll(imageView, desc);
         alert.getDialogPane().setContent(content);
 
-        alert.showAndWait();
+        // Create a custom button to add the course
+        ButtonType addButton = new ButtonType("Add Course");
+        ButtonType cancelButton = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+        alert.getButtonTypes().setAll(addButton, cancelButton);
+
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() == addButton) {
+            try {
+                ((Student)Main.currentUser).addCourseCode(Main.conn, course.Code);
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+        }
     }
 
 }

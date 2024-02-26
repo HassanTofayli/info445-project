@@ -6,12 +6,18 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
 <VBox alignment="CENTER" prefHeight="475.0" prefWidth="867.0" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.info445project.LoginController">
     <padding>
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
     </padding>
+   <HBox prefHeight="100.0" prefWidth="200.0">
+      <children>
+         <Button onAction="#onAsGuestClick" style="-fx-background-color: white; -fx-border-color: green;" text="As a Guest" />
+      </children>
+   </HBox>
    <ImageView fitHeight="150.0" fitWidth="200.0" pickOnBounds="true" preserveRatio="true">
       <image>
          <Image url="@images/Bitwise-Logo-PNG-DARK.png" />
@@ -23,7 +29,7 @@
       </VBox.margin>
    </Label>
 
-    <TextField fx:id="textField_username" promptText="Sara" text="Sara">
+   <TextField fx:id="textField_username" promptText="Sara" text="Mr. Smith">
       <VBox.margin>
          <Insets top="5.0" />
       </VBox.margin></TextField>
@@ -32,7 +38,7 @@
          <Insets top="10.0" />
       </VBox.margin>
    </Label>
-   <TextField fx:id="textField_password" promptText="SaraPass" text="SaraPass">
+   <TextField fx:id="textField_password" promptText="SaraPass" text="smith01">
       <VBox.margin>
          <Insets top="5.0" />
       </VBox.margin>

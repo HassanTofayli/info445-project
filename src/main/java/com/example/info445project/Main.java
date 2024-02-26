@@ -15,14 +15,16 @@ public class Main extends Application {
 
     public static StringProperty stageTitle = new SimpleStringProperty();
     public static Object currentUser;
+    public static boolean guest = false;
     public static Connection conn;
-
+    public static Stage stage;
+    public static Scene scene;
+    public static Parent root;
     @Override
     public void start(Stage stage) {
         try {
-
             initStageTitle(stage);
-
+            stageTitle.set("Login");
             Parent root = FXMLLoader.load(getClass().getResource("login-view.fxml"));
             stage.setScene(new Scene(root));
             stage.show();
@@ -44,22 +46,4 @@ public class Main extends Application {
         stageTitle.addListener((o, oldv, newv) ->{ System.out.println("newv: " + newv); });
     }
 
-    public static void executeSampleQuery() {
-        String query = "SELECT * FROM Institutions"; // Your SQL query here
-
-        try (Connection connection = DatabaseConnection.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(query)) {
-
-            while (resultSet.next()) {
-                // Assuming 'Institutions' has an 'InstitutionID' and 'Name' column
-                int id = resultSet.getInt("InstitutionID");
-                String name = resultSet.getString("Name");
-                System.out.println("Institution ID: " + id + ", Name: " + name);
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
 }

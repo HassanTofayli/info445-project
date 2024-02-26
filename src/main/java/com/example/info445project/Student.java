@@ -33,21 +33,47 @@ public class Student {
 
 
     public void addCourseCode(Connection conn, Integer courseCode) throws SQLException {
-        if (!coursesCodes.contains(courseCode)) {
-            String sql = "INSERT INTO StudentCourses (StudentID, CourseID) VALUES (?, ?)";
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setInt(1, this.id);
-                pstmt.setInt(2, courseCode);
-                int affectedRows = pstmt.executeUpdate();
-                if (affectedRows > 0) {
-                    System.out.println("COURSE ADDED to Student Array: " + courseCode);
-                    coursesCodes.add(courseCode); // Add to the local list if successful
-                }
+        // Get the CourseID from the courses table using the CourseCode
+        String courseIdSql = "SELECT CourseID FROM courses WHERE Code = ?";
+        int courseId = -1;
+        try (PreparedStatement courseIdStmt = conn.prepareStatement(courseIdSql)) {
+            courseIdStmt.setInt(1, courseCode);
+            ResultSet courseIdRs = courseIdStmt.executeQuery();
+            if (courseIdRs.next()) {
+                courseId = courseIdRs.getInt("CourseID");
+            } else {
+                throw new SQLException("Course code does not exist in the courses table.");
+            }
+        }
+
+        // Now, check if the course code already exists for this student in the database
+        String checkSql = "SELECT COUNT(*) FROM StudentCourses WHERE StudentID = ? AND CourseID = ?";
+        try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+            checkStmt.setInt(1, this.id);
+            checkStmt.setInt(2, courseId);
+            ResultSet rs = checkStmt.executeQuery();
+            if (rs.next() && rs.getInt(1) > 0) {
+                System.out.println("This course is already registered for this student.");
+                return; // Course already exists, so exit the method
+            }
+        }
+
+        // If the course is not registered for this student, proceed to insert it
+        String insertSql = "INSERT INTO StudentCourses (StudentID, CourseID) VALUES (?, ?)";
+        try (PreparedStatement insertStmt = conn.prepareStatement(insertSql)) {
+            insertStmt.setInt(1, this.id);
+            insertStmt.setInt(2, courseId); // Use the obtained CourseID here
+            int affectedRows = insertStmt.executeUpdate();
+            if (affectedRows > 0) {
+                System.out.println("COURSE ADDED for Student: " + this.id + ", Course ID: " + courseId);
+                coursesCodes.add(courseId); // Add the CourseID to the local list if successful
             }
         }
     }
 
-    // Add a private teacher to the student's list of private teachers in the database
+
+
+
     public void addPrivateTeacher(Connection conn, Teacher teacher) throws SQLException {
         int studentId = ((Student)Main.currentUser).id; // Assuming Main.currentUser is always a Student
 
@@ -81,7 +107,6 @@ public class Student {
     }
 
 
-    // Remove a course code from the student's list of courses in the database
     public void removeCourseCode(Connection conn, Integer courseCode) throws SQLException {
         String sql = "DELETE FROM StudentCourses WHERE StudentID = ? AND CourseID = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -94,7 +119,6 @@ public class Student {
         }
     }
 
-    // Get the student's course codes from the database
     public List<Integer> getCoursesCodes(Connection conn) throws SQLException {
         String sql = "SELECT CourseID FROM StudentCourses WHERE StudentID = ?";
 
@@ -128,7 +152,6 @@ public class Student {
         return teachers;
     }
 
-    // Method to add an institution to the student in the database
     public void addInstitution(Connection conn, int newInstitutionId) throws SQLException {
         String sql = "UPDATE Students SET InstitutionID = ? WHERE StudentID = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -140,7 +163,6 @@ public class Student {
         }
     }
 
-    // Method to remove the institution association from the student in the database
     public void removeInstitution(Connection conn) throws SQLException {
         String sql = "UPDATE Students SET InstitutionID = NULL WHERE StudentID = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -151,7 +173,6 @@ public class Student {
         }
     }
 
-    // Method to remove a private teacher from the student's list in the database
     public void removePrivateTeacher(Connection conn, int teacherId) throws SQLException {
         String sql = "DELETE FROM StudentTeachers WHERE StudentID = ? AND TeacherID = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
